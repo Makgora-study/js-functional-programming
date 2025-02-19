@@ -75,13 +75,11 @@ type ReviewState = {
 	readonly reviewCount: number;
 };
 
-// 초기 상태를 생성하는 함수
 const createInitialState = (): ReviewState => ({
 	totalScore: 0,
 	reviewCount: 0,
 });
 
-// 새로운 리뷰를 처리하는 순수 함수
 const processReview = (
 	currentState: ReviewState,
 	score: number,
@@ -90,29 +88,24 @@ const processReview = (
 	reviewCount: currentState.reviewCount + 1,
 });
 
-// 평균 점수를 계산하는 순수 함수
-const calculateAverage = (state: ReviewState): number =>
+const calculateAverageReview = (state: ReviewState): number =>
 	state.reviewCount === 0 ? 0 : state.totalScore / state.reviewCount;
 
-// 리뷰 정보를 표시하는 순수 함수
 const formatReviewDisplay = (average: number): string =>
 	`현재 평균 리뷰 점수: ${average.toFixed(2)}`;
 
-// 전체 리뷰 처리 파이프라인
 const processAndDisplayReview = (
 	state: ReviewState,
 	score: number,
 ): [ReviewState, string] => {
 	const newState = processReview(state, score);
-	const average = calculateAverage(newState);
+	const average = calculateAverageReview(newState);
 	const display = formatReviewDisplay(average);
 	return [newState, display];
 };
 
-// 사용 예시
 let state = createInitialState();
 
-// 각 리뷰 처리
 const reviews = [4, 5, 3];
 reviews.forEach((score) => {
 	const [newState, display] = processAndDisplayReview(state, score);
