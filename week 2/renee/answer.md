@@ -319,3 +319,124 @@ const QuizSection = ({ title }: { title: string }) => (
 - 컴포넌트 내부에서 함수형 사고를 적용하려니 복잡해서 어려웠습니다
 - 타입스크립트를 사용한 타입은 덤이었고요. 이 부분은 Claude의 도움을 조금 받았습니다.
 - 상태를 사용하기 때문에, 계산과 액션의 조금 더 명확한 분리 기준이 필요했습니다.
+
+## renee의 문제
+
+### 코드 냄새 분석하기
+
+1. 전역 상태 관리와 데이터 직접 변경
+2. 암묵적 입출력
+3. JSX에 인라인으로 작성된 핸들러
+
+### 코드 개선하기
+
+#### 데이터, 액션, 계산 분리하기
+
+우선 초기 상태를 분리해볼까요?
+
+```tsx
+type Todo = {
+	id: number;
+	text: string;
+	completed: boolean;
+	priority: 'high' | 'medium' | 'low';
+};
+
+const INITIAL_TODOS: Todo[] = [
+	{
+		id: 1,
+		text: '함수형 프로그래밍 스터디 준비하기',
+		completed: false,
+		priority: 'high',
+	},
+	{
+		id: 2,
+		text: '불변성 예제 만들기',
+		completed: true,
+		priority: 'medium',
+	},
+	{
+		id: 3,
+		text: '순수 함수 개념 정리하기',
+		completed: false,
+		priority: 'low',
+	},
+];
+```
+
+계산 로직도 분리해봅시다. todo의 통계 계산이나 필터 로직은 계산으로 분리될 수 있어요.
+
+```tsx
+const calculateStats = (todos: Todo[]) => {
+	const total = todos.length;
+	const completed = todos.filter((t) => t.completed).length;
+	const highPriority = todos.filter((t) => t.priority === 'high').length;
+
+	return {
+		total,
+		completed,
+		highPriority,
+		completionRate: total ? (completed / total) * 100 : 0,
+	};
+};
+
+const getFilteredTodos = (
+	todos: Todo[],
+	filterText: string,
+	selectedPriority: string
+): Todo[] => {
+	return todos.filter((todo) => {
+		const textMatch = todo.text
+			.toLowerCase()
+			.includes(filterText.toLowerCase());
+		const priorityMatch =
+			selectedPriority === 'all' || todo.priority === selectedPriority;
+		return textMatch && priorityMatch;
+	});
+};
+```
+
+todo를 추가하고 갱신하는 함수는 모두 액션입니다. 이를 분리해봅시다.
+
+```tsx
+const addTodoToList = (todos: Todo[], text: string): Todo[] => {
+	const newTodo = {
+		id: todos.length + 1,
+		text,
+		completed: false,
+		priority: 'medium' as const,
+	};
+	return [...todos, newTodo];
+};
+
+const updateTodoInList = (
+	todos: Todo[],
+	id: number,
+	updates: Partial<Todo>
+): Todo[] => {
+	return todos.map((todo) => (todo.id === id ? { ...todo, ...updates } : todo));
+};
+
+const handleAddTodo = useCallback(() => {
+	if (!newTodoText.trim()) return;
+	setTodos((prev) => addTodoToList(prev, newTodoText.trim()));
+	setNewTodoText('');
+}, [newTodoText]);
+
+const handleToggleTodo = useCallback(
+	(id: number) => {
+		setTodos((prev) =>
+			updateTodoInList(prev, id, {
+				completed: !prev.find((t) => t.id === id)?.completed,
+			})
+		);
+	},
+	[setTodos]
+);
+```
+
+### 느낀점
+
+- 함수형 사고를 적용하면서 상태 관리와 UI 업데이트를 명확하게 분리해 관리할 수 있었어요.
+- 계산과 액션의 분리 기준을 명확히 하니 유지보수성을 개선할 수 있었어요.
+- 함수형 프로그래밍 패턴을 적용해 코드의 재사용성을 높일 수 있었어요.
